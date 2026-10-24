@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON DRIFT — Survive the Void</title>
+<style>
+:root{--cyan:#50f6ff;--pink:#ff49cf;--bg:#070817}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#fff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;overflow:hidden}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;color:white;background:#11152ddd;border:1px solid #50f6ff66;padding:12px 18px;border-radius:10px;cursor:pointer;transition:.2s}
+button:hover{border-color:var(--cyan);background:#18263a;transform:translateY(-2px)}
+#hud{position:fixed;top:20px;left:20px;right:20px;display:flex;justify-content:space-between;gap:12px;pointer-events:none}
+.stat{background:#0a0d1ac9;border:1px solid #ffffff16;padding:12px 16px;border-radius:12px;backdrop-filter:blur(10px)}
+.label{font-size:10px;letter-spacing:2px;color:#8995bd}
+.value{font-size:23px;font-weight:900;margin-top:5px}
+#xp{position:fixed;top:0;left:0;height:3px;width:0;background:var(--cyan);box-shadow:0 0 15px var(--cyan)}
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050612a8;backdrop-filter:blur(7px);padding:20px}
+.panel{width:min(520px,100%);padding:35px 25px;text-align:center;background:linear-gradient(145deg,#10142af2,#080a18f5);border:1px solid #50f6ff44;border-radius:23px;box-shadow:0 0 80px #3923a222}
+.eyebrow{color:var(--cyan);letter-spacing:5px;font-size:11px}
+h1{font-size:clamp(42px,10vw,76px);line-height:.95;letter-spacing:-5px;margin:20px 0;background:linear-gradient(100deg,#fff,var(--cyan),var(--pink));color:transparent;background-clip:text}
+p{color:#a6afd1;font-size:13px;line-height:1.8}
+.primary{background:linear-gradient(100deg,#137b9b,#6937a7);border:1px solid #74faff;font-weight:bold;padding:16px 30px;width:100%;margin-top:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}
+.mini{border:1px solid #ffffff15;background:#ffffff05;padding:13px;border-radius:10px}
+.mini b{display:block;color:var(--cyan);font-size:19px;margin-bottom:5px}
+.mini small{color:#929cbe;font-size:10px;letter-spacing:1px}
+#upgradeList{display:grid;gap:10px;margin:18px 0}
+.upgrade{display:flex;justify-content:space-between;align-items:center;text-align:left;gap:12px}
+.upgrade span{font-size:11px;color:#a8b2d5}
+.upgrade strong{color:var(--cyan)}
+#notice{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:#c4cbed;font-size:11px;text-align:center;width:90%;pointer-events:none}
+.hidden{display:none!important}
+@media(max-width:500px){#hud{top:10px;left:10px;right:10px}.stat{padding:9px}.value{font-size:17px}.label{font-size:8px}.panel{padding:24px 17px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="xp"></div>
+<div id="hud">
+  <div class="stat"><div class="label">SCORE</div><div class="value" id="score">0</div></div>
+  <div class="stat"><div class="label">BEST</div><div class="value" id="best">0</div></div>
+  <div class="stat"><div class="label">ENERGY ◈</div><div class="value" id="coins">0</div></div>
+  <div class="stat"><div class="label">WAVE</div><div class="value" id="wave">1</div></div>
+</div>
+<div id="overlay">
+ <div class="panel" id="home">
+  <div class="eyebrow">✦ AN ARCADE SURVIVAL EXPERIENCE ✦</div>
+  <h1>NEON<br>DRIFT</h1>
+  <p>The void is hungry. The longer you survive, the more beautiful and dangerous it becomes.</p>
+  <div class="grid">
+   <div class="mini"><b id="homeBest">0</b><small>PERSONAL BEST</small></div>
+   <div class="mini"><b id="homeBank">0</b><small>LIFETIME ENERGY</small></div>
+  </div>
+  <p><span style="color:#50f6ff">WASD</span> / <span style="color:#50f6ff">ARROWS</span> to move<br>Collect energy. Dodge the hunters. Build your multiplier.<br>On mobile, drag to steer.</p>
+  <button class="primary" id="play">ENTER THE VOID →</button>
+  <button id="openShop">✧ HANGAR & UPGRADES</button>
+  <p style="font-size:10px">EVERY RUN WRITES A NEW STORY</p>
+ </div>
+ <div class="panel hidden" id="dead">
+  <div class="eyebrow">SIGNAL LOST</div><h1 style="font-size:55px">RUN<br>ENDED</h1>
+  <div class="grid">
+   <div class="mini"><b id="endScore">0</b><small>FINAL SCORE</small></div>
+   <div class="mini"><b id="endBest">0</b><small>ALL-TIME BEST</small></div>
+   <div class="mini"><b id="endEnergy">0</b><small>ENERGY FOUND</small></div>
+   <div class="mini"><b id="endWave">1</b><small>WAVE REACHED</small></div>
+  </div>
+  <button class="primary" id="again">RUN IT BACK ↗</button>
+  <button id="deadShop">UPGRADE SHIP</button>
+  <button id="homeBtn">MAIN MENU</button>
+ </div>
+ <div class="panel hidden" id="shop">
+  <div class="eyebrow">YOUR SHIP. YOUR LEGACY.</div><h1 style="font-size:49px">HANGAR</h1>
+  <p>Spend lifetime energy to permanently upgrade every future run.</p>
+  <div class="mini"><b id="shopBank">0</b><small>AVAILABLE ENERGY</small></div>
+  <div id="upgradeList"></div>
+  <button id="shopBack" class="primary">BACK TO MENU</button>
+ </div>
+</div>
+<div id="notice">WASD / ARROWS TO MOVE · ESC TO PAUSE · COLLECT ◈ · AVOID THE RED</div>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const canvas=$('game'),ctx=canvas.getContext('2d');
+let W,H,DPR,player,orbs=[],enemies=[],particles=[],stars=[];
+let running=false,dead=false,paused=false,last=0,elapsed=0,score=0,runEnergy=0,combo=0,comboTime=0,spawn=0,orbSpawn=0,shake=0;
+let keys={},pointer=null,best=+(localStorage.ndBest||0),bank=+(localStorage.ndBank||0);
+let upgrades=JSON.parse(localStorage.ndUpgrades||'{"speed":0,"shield":0,"magnet":0,"fortune":0}');
+let lifetime=+(localStorage.ndLifetime||0),frame=0;
+const defs=[
+ {id:'speed',name:'PHASE ENGINE',desc:'Move faster every run',base:25,max:5},
+ {id:'shield',name:'VOID ARMOR',desc:'Start with extra protection',base:40,max:3},
+ {id:'magnet',name:'ENERGY MAGNET',desc:'Collect energy from farther away',base:30,max:5},
+ {id:'fortune',name:'LUCK PROTOCOL',desc:'Earn more energy per pickup',base:50,max:5}
+];
+function save(){localStorage.ndBest=best;localStorage.ndBank=bank;localStorage.ndUpgrades=JSON.stringify(upgrades);localStorage.ndLifetime=lifetime}
+function resize(){
+ W=innerWidth;H=innerHeight;DPR=Math.min(devicePixelRatio||1,2);
+ canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);
+ stars=Array.from({length:Math.min(180,Math.floor(W*H/5000))},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random()*1.5+.2}));
+}
+addEventListener('resize',resize);resize();
+function menu(){running=false;dead=false;paused=false;$('overlay').classList.remove('hidden');showPanel('home');updateMenu()}
+function showPanel(id){for(const p of ['home','dead','shop'])$(p).classList.toggle('hidden',p!==id)}
+function updateMenu(){$('homeBest').textContent=best.toLocaleString();$('homeBank').textContent=bank.toLocaleString();$('best').textContent=best.toLocaleString();$('coins').textContent=bank.toLocaleString()}
+function openShop(){showPanel('shop');$('overlay').classList.remove('hidden');$('shopBank').textContent=bank.toLocaleString();$('upgradeList').innerHTML='';
+ defs.forEach(d=>{let n=upgrades[d.id],cost=Math.floor(d.base*Math.pow(1.85,n));let b=document.createElement('button');b.className='upgrade';b.innerHTML='<div><strong>'+d.name+'</strong><br><span>'+d.desc+' · LVL '+n+'/'+d.max+'</span></div><strong>'+(n>=d.max?'MAX':cost+' ◈')+'</strong>';b.disabled=n>=d.max||bank<cost;b.style.opacity=b.disabled?'.5':'1';b.onclick=()=>{if(n>=d.max||bank<cost)return;bank-=cost;upgrades[d.id]++;save();openShop()};$('upgradeList').appendChild(b)})}
+$('openShop').onclick=openShop;$('deadShop').onclick=openShop;$('shopBack').onclick=()=>{showPanel('home');updateMenu()};
+$('homeBtn').onclick=menu;
+$('play').onclick=start;$('again').onclick=start;
+function start(){
+ $('overlay').classList.add('hidden');running=true;dead=false;paused=false;
+ score=0;runEnergy=0;elapsed=0;spawn=0;orbSpawn=0;combo=0;comboTime=0;shake=0;last=performance.now();
+ orbs=[];enemies=[];particles=[];
+ player={x:W/2,y:H/2,r:9,hp:1+upgrades.shield,inv:1.5,trail:[],angle:0};
+ for(let i=0;i<10;i++)makeOrb();
+ updateHUD();requestAnimationFrame(loop)
+}
+function rand(a,b){return a+Math.random()*(b-a)}
+function makeOrb(){let a=rand(0,Math.PI*2),r=rand(90,Math.max(130,Math.min(W,H)*.65));orbs.push({x:Math.max(15,Math.min(W-15,W/2+Math.cos(a)*r)),y:Math.max(65,Math.min(H-15,H/2+Math.sin(a)*r)),r:rand(3,5),phase:rand(0,7),v:rand(0,6),gold:Math.random()<.07})}
+function enemy(){let side=Math.floor(Math.random()*4),x=side===0?0:side===1?W:rand(0,W),y=side===2?0:side===3?H:rand(0,H);enemies.push({x,y,r:rand(7,12),speed:rand(40,65)+elapsed*1.4,hue:Math.random()<.2?285:345,phase:rand(0,8)})}
+function burst(x,y,color,n=10){for(let i=0;i<n;i++){let a=rand(0,Math.PI*2),s=rand(30,210);particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.25,.8),max:.8,color,r:rand(1,3)})}}
+function update(dt){
+ elapsed+=dt;frame++;
+ const p=player;
+ let dx=(keys.ArrowRight||keys.d?1:0)-(keys.ArrowLeft||keys.a?1:0);
+ let dy=(keys.ArrowDown||keys.s?1:0)-(keys.ArrowUp||keys.w?1:0);
+ if(pointer){let ax=pointer.x-p.x,ay=pointer.y-p.y,dist=Math.hypot(ax,ay);if(dist>5){dx=ax/dist*Math.min(1,dist/40);dy=ay/dist*Math.min(1,dist/40)}else{dx=0;dy=0}}
+ let m=Math.hypot(dx,dy);if(m>0){dx/=m;dy/=m;p.angle=Math.atan2(dy,dx)}
+ let speed=235*(1+upgrades.speed*.12);
+ p.x=Math.max(p.r,Math.min(W-p.r,p.x+dx*speed*dt));
+ p.y=Math.max(55,Math.min(H-p.r,p.y+dy*speed*dt));
+ p.trail.unshift({x:p.x,y:p.y});if(p.trail.length>14)p.trail.pop();
+ p.inv=Math.max(0,p.inv-dt);comboTime-=dt;if(comboTime<=0)combo=0;
+ score+=dt*(5+Math.min(40,combo*1.5));
+ spawn-=dt;orbSpawn-=dt;
+ if(spawn<=0){enemy();spawn=Math.max(.23,1.05-elapsed*.009)}
+ if(orbSpawn<=0){makeOrb();orbSpawn=Math.max(.18,1.1-elapsed*.004)}
+ for(let i=enemies.length-1;i>=0;i--){
+  let e=enemies[i],a=Math.atan2(p.y-e.y,p.x-e.x);
+  e.x+=Math.cos(a)*e.speed*dt;e.y+=Math.sin(a)*e.speed*dt;e.phase+=dt;
+  if(Math.hypot(p.x-e.x,p.y-e.y)<p.r+e.r){
+   if(p.inv<=0){p.hp--;p.inv=1.35;shake=12;burst(p.x,p.y,'#ff436f',22);
+    if(p.hp<=0){finish();return}
+   }
+   if(p.inv>0&&p.hp<=0)enemies.splice(i,1);
+  }
+ }
+ for(let i=orbs.length-1;i>=0;i--){
+  let o=orbs[i];o.phase+=dt*3;
+  let d=Math.hypot(p.x-o.x,p.y-o.y);
+  let magnet=65+upgrades.magnet*45;
+  if(d<magnet&&d>1){o.x+=(p.x-o.x)*dt*2.6;o.y+=(p.y-o.y)*dt*2.6}
+  if(d<p.r+o.r+5){
+   let value=(o.gold?5:1)*(1+upgrades.fortune);
+   runEnergy+=value;combo++;comboTime=2.5;score+=100*value*Math.min(combo,10);
+   burst(o.x,o.y,o.gold?'#ffe68a':'#50f6ff',o.gold?18:9);orbs.splice(i,1)
+  }
+ }
+ for(let i=particles.length-1;i>=0;i--){let q=particles[i];q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.97;q.vy*=.97;q.life-=dt;if(q.life<=0)particles.splice(i,1)}
+ shake=Math.max(0,shake-dt*25);
+ updateHUD()
+}
+function updateHUD(){$('score').textContent=Math.floor(score).toLocaleString();$('best').textContent=Math.max(best,Math.floor(score)).toLocaleString();$('coins').textContent=(bank+runEnergy).toLocaleString();$('wave').textContent=Math.floor(elapsed/15)+1;$('xp').style.width=(elapsed%15/15*100)+'%'}
+function draw(){
+ ctx.save();if(shake)ctx.translate(rand(-shake,shake),rand(-shake,shake));
+ ctx.fillStyle='#070817';ctx.fillRect(-20,-20,W+40,H+40);
+ let g=ctx.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,Math.max(W,H)*.7);g.addColorStop(0,'#11102b');g.addColorStop(1,'#070817');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.strokeStyle='#6e6aff0c';ctx.lineWidth=1;
+ let off=(elapsed*12)%48;for(let x=0;x<W;x+=48){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}for(let y=off;y<H;y+=48){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ stars.forEach(s=>{ctx.fillStyle='rgba(150,190,255,'+(.15+s.z*.3)+')';ctx.fillRect(s.x,s.y,s.z*1.5,s.z*1.5);if(running){s.y+=s.z*dtSafe() * 12;if(s.y>H)s.y=0}});
+ for(const o of orbs){let pulse=Math.sin(o.phase)*1.5;ctx.beginPath();ctx.arc(o.x,o.y,o.r+5+pulse,0,Math.PI*2);ctx.fillStyle=o.gold?'#ffd65a18':'#50f6ff18';ctx.fill();ctx.beginPath();ctx.arc(o.x,o.y,o.r+pulse*.3,0,Math.PI*2);ctx.fillStyle=o.gold?'#ffe58c':'#50f6ff';ctx.shadowBlur=15;ctx.shadowColor=ctx.fillStyle;ctx.fill();ctx.shadowBlur=0}
+ for(const e of enemies){ctx.save();ctx.translate(e.x,e.y);ctx.rotate(e.phase);ctx.shadowBlur=18;ctx.shadowColor=`hsl(${e.hue},100%,60%)`;ctx.strokeStyle=`hsl(${e.hue},100%,65%)`;ctx.fillStyle='#1d102a';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(e.r*1.4,0);ctx.lineTo(0,e.r);ctx.lineTo(-e.r*1.1,0);ctx.lineTo(0,-e.r);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()}
+ for(let i=particles.length-1;i>=0;i--){let q=particles[i];ctx.globalAlpha=Math.max(0,q.life/q.max);ctx.fillStyle=q.color;ctx.shadowBlur=8;ctx.shadowColor=q.color;ctx.beginPath();ctx.arc(q.x,q.y,q.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;ctx.shadowBlur=0;
+ if(player){let p=player;
+  for(let i=p.trail.length-1;i>=0;i--){let t=p.trail[i];ctx.globalAlpha=(1-i/p.trail.length)*.23;ctx.fillStyle='#50f6ff';ctx.beginPath();ctx.arc(t.x,t.y,p.r*(1-i/p.trail.length),0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1;
+  if(p.inv<=0||Math.floor(performance.now()/90)%2===0){
+   ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.angle+Math.PI/2);ctx.shadowBlur=25;ctx.shadowColor='#50f6ff';ctx.fillStyle='#d5ffff';ctx.strokeStyle='#50f6ff';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-14);ctx.lineTo(10,10);ctx.lineTo(0,6);ctx.lineTo(-10,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore()
+  }
+  for(let i=0;i<p.hp;i++){ctx.strokeStyle='#50f6ff';ctx.globalAlpha=.7;ctx.beginPath();ctx.arc(p.x,p.y,19+i*5,0,Math.PI*2);ctx.stroke()}ctx.globalAlpha=1;
+ }
+ ctx.restore()
+}
+function dtSafe(){return Math.min(.04,(performance.now()-last)/1000||.016)}
+function loop(now){
+ if(!running||paused)return;
+ let dt=Math.min((now-last)/1000,.035);last=now;
+ update(dt);draw();
+ if(running)requestAnimationFrame(loop)
+}
+function finish(){
+ running=false;dead=true;best=Math.max(best,Math.floor(score));bank+=runEnergy;lifetime+=runEnergy;save();
+ $('endScore').textContent=Math.floor(score).toLocaleString();$('endBest').textContent=best.toLocaleString();$('endEnergy').textContent=runEnergy.toLocaleString();$('endWave').textContent=Math.floor(elapsed/15)+1;
+ $('overlay').classList.remove('hidden');showPanel('dead');updateMenu()
+}
+$('play').focus();
+addEventListener('keydown',e=>{
+ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
+ keys[e.key]=true;
+ if(e.key==='Escape'&&running){paused=!paused;if(paused){$('overlay').classList.remove('hidden');showPanel('home');$('home').querySelector('h1').innerHTML='TIME<br>FROZEN';$('play').textContent='RESUME RUN →';$('play').onclick=()=>{ $('overlay').classList.add('hidden');running=true;paused=false;last=performance.now();requestAnimationFrame(loop)};requestAnimationFrame(draw)}else{last=performance.now();requestAnimationFrame(loop)}}
+});
+addEventListener('keyup',e=>keys[e.key]=false);
+canvas.addEventListener('pointerdown',e=>{if(running){pointer={x:e.clientX,y:e.clientY};canvas.setPointerCapture?.(e.pointerId)}});
+canvas.addEventListener('pointermove',e=>{if(running&&e.buttons)pointer={x:e.clientX,y:e.clientY}});
+canvas.addEventListener('pointerup',()=>pointer=null);
+canvas.addEventListener('pointercancel',()=>pointer=null);
+let touchStart=null;
+canvas.addEventListener('touchstart',e=>{if(running&&e.touches.length){touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY}}},{passive:true});
+canvas.addEventListener('touchmove',e=>{if(running&&touchStart&&e.touches.length){let t=e.touches[0];pointer={x:t.clientX,y:t.clientY} }},{passive:true});
+canvas.addEventListener('touchend',()=>{touchStart=null;pointer=null},{passive:true});
+updateMenu();draw();
+})();
+</script>
+</body>
+</html>
